@@ -16,6 +16,20 @@ module REXML
 
   # this class adds a few helper methods to REXML::Element
   class Element
+    attr_accessor :start_parse_time, :end_parse_time, :threadblock_time
+    def parse_time
+      if (!start_parse_time || !end_parse_time) && !parent
+        return -1
+      elsif !start_parse_time || !end_parse_time
+        return parent.parse_time
+      else
+        end_parse_time - start_parse_time
+      end
+    end
+
+    def threadblock_time
+      return @threadblock_time || parent && parent.threadblock_time || -1
+    end
 
     def each_elements(*els, &block)
       els.inject([ ]) do |res, e|
@@ -81,6 +95,9 @@ module REXML
           add(e.clone)
         end
       end
+      self.start_parse_time = xmlelement.start_parse_time
+      self.end_parse_time = xmlelement.end_parse_time
+
       self
     end
 

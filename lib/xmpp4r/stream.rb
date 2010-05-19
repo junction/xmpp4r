@@ -176,7 +176,7 @@ module Jabber
     # element:: [REXML::Element] The received element
     def receive(element)
       @tbcbmutex.synchronize { @processing += 1 }
-      Jabber::debuglog("RECEIVED:\n#{element.to_s}")
+      Jabber::debuglog("RECEIVED (parse time: %s):\n%s"%[element.parse_time,element.to_s])
 
       if element.namespace('').to_s == '' # REXML namespaces are always strings
         element.add_namespace(@streamns)
@@ -251,6 +251,7 @@ module Jabber
 
         if r == true
           @tbcbmutex.synchronize do
+            Jabber::debuglog("TIME TO CALL: %s, TIME TO PROCESS: %s"%[threadblock.time_to_call,threadblock.time_to_process])
             @threadblocks.delete(threadblock)
           end
           threadblock.wakeup
@@ -319,13 +320,24 @@ module Jabber
     # keep track of any blocks which were passed to
     # Stream#send.
     class ThreadBlock
+      attr_reader :time_to_call, :time_to_process
+
       def initialize(block)
         @block = block
+
+        @time_start = Time.now
+        @time_to_call = nil
+        @time_to_process = nil
+
         @waiter = Semaphore.new
         @exception = nil
       end
       def call(*args)
-        @block.call(*args)
+        @time_to_call = Time.now - @time_start
+        args[0].threadblock_time = @time_to_call
+        ret = @block.call(*args)
+        @time_to_process = Time.now - @time_start
+        ret
       end
       def wait
         @waiter.wait

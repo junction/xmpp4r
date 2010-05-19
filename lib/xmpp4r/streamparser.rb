@@ -40,6 +40,7 @@ module Jabber
 
         parser.listen( :start_element ) do |uri, localname, qname, attributes|
           e = REXML::Element.new(qname)
+          e.start_parse_time = Time.now
           e.add_attributes attributes
           @current = @current.nil? ? e : @current.add_element(e)
 
@@ -59,6 +60,7 @@ module Jabber
             @started = false
             @listener.parser_end
           else
+            @current.end_parse_time = Time.now
             @listener.receive(@current) unless @current.parent
             @current = @current.parent
           end
